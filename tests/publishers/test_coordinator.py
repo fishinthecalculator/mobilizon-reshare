@@ -36,6 +36,7 @@ def failure_report(mock_publisher_invalid, event):
             formatter=None,
             event=event,
             id=UUID(int=1),
+            timestamp=today,
         ),
     )
 

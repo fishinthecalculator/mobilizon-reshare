@@ -18,6 +18,7 @@ from mobilizon_reshare.storage.query.write import (
     update_publishers,
     create_unpublished_events,
 )
+from tests import today
 from tests.storage import (
     complete_specification,
     event_0,
@@ -163,6 +164,7 @@ async def test_create_unpublished_events(
                             formatter=TelegramFormatter(),
                             event=event_1,
                             publisher=TelegramPublisher(),
+                            timestamp=today,
                         ),
                     ),
                 ],

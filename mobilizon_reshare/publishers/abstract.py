@@ -187,6 +187,7 @@ class BasePublication:
 class EventPublication(BasePublication):
     event: MobilizonEvent
     id: UUID
+    timestamp: arrow.Arrow
 
 
 @dataclass

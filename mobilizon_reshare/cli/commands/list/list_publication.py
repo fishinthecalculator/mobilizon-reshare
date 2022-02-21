@@ -3,7 +3,8 @@ from typing import Iterable
 import click
 from arrow import Arrow
 
-from mobilizon_reshare.models.publication import Publication, PublicationStatus
+from mobilizon_reshare.models.publication import PublicationStatus
+from mobilizon_reshare.publishers.abstract import EventPublication
 from mobilizon_reshare.storage.query.read import (
     get_all_publications,
     publications_with_status,
@@ -15,13 +16,13 @@ status_to_color = {
 }
 
 
-def show_publications(publications: Iterable[Publication]):
+def show_publications(publications: Iterable[EventPublication]):
     click.echo_via_pager("\n".join(map(pretty, publications)))
 
 
-def pretty(publication: Publication):
+def pretty(publication: EventPublication):
     return (
-        f"{str(publication.id) : <40}{publication.timestamp.isoformat() : <36}"
+        f"{str(publication.id) : <40}{publication.timestamp.to('local').isoformat() : <36}"
         f"{click.style(publication.status.name, fg=status_to_color[publication.status]) : <22}"
         f"{publication.publisher.name : <12}{str(publication.event.id)}"
     )

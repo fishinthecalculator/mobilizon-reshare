@@ -78,7 +78,9 @@ def compute_event_status(publications: list[Publication]) -> EventPublicationSta
     raise ValueError(f"Illegal combination of PublicationStatus: {unique_statuses}")
 
 
-def publication_from_orm(model: Publication, event: MobilizonEvent):
+def publication_from_orm(
+    model: Publication, event: MobilizonEvent, tz: str = "UTC"
+) -> EventPublication:
     # imported here to avoid circular dependencies
     from mobilizon_reshare.publishers.platforms.platform_mapping import (
         get_publisher_class,
@@ -92,4 +94,7 @@ def publication_from_orm(model: Publication, event: MobilizonEvent):
         formatter,
         event,
         model.id,
+        arrow.get(tortoise.timezone.localtime(value=model.timestamp, timezone=tz)).to(
+            "local"
+        ),
     )

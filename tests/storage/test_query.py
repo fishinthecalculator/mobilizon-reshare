@@ -4,7 +4,7 @@ from uuid import UUID
 import arrow
 import pytest
 
-from mobilizon_reshare.event.event import MobilizonEvent, EventPublicationStatus
+from mobilizon_reshare.event.event import EventPublicationStatus
 from mobilizon_reshare.models.publication import PublicationStatus
 from mobilizon_reshare.storage.query.read import (
     get_published_events,
@@ -12,9 +12,9 @@ from mobilizon_reshare.storage.query.read import (
     publications_with_status,
     events_without_publications,
     build_publications,
+    get_all_publications,
 )
 from tests.storage import complete_specification, event_0, event_1, event_3
-from tests.storage import result_publication
 from tests import today
 
 
@@ -28,6 +28,33 @@ async def test_get_published_events(generate_models):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "spec,expected_result",
+    [
+        [
+            complete_specification,
+            [2, 4, 5],
+        ],
+        [
+            [0, 1],
+        ],
+        [
+            [3],
+        ],
+    ],
+)
+async def test_prefetch_publication_relations(
+    spec,
+    expected_result,
+    generate_models,
+):
+    await generate_models(spec)
+    publications = await get_all_publications()
+
+    assert list(map(lambda p: (p.event, p.publisher), publications)) == expected_result
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     "status,mobilizon_id,from_date,to_date,expected_result",
     [
         [
@@ -35,21 +62,21 @@ async def test_get_published_events(generate_models):
             None,
             arrow.get(today + timedelta(hours=1)),
             None,
-            [result_publication[2], result_publication[4], result_publication[5]],
+            [2, 4, 5],
         ],
         [
             PublicationStatus.COMPLETED,
             None,
             None,
             arrow.get(today + timedelta(hours=2)),
-            [result_publication[0], result_publication[1]],
+            [0, 1],
         ],
         [
             PublicationStatus.FAILED,
             None,
             None,
             arrow.get(today + timedelta(hours=5)),
-            [result_publication[3]],
+            [3],
         ],
     ],
 )
@@ -69,7 +96,9 @@ async def test_publications_with_status(
         to_date=to_date,
     )
 
-    assert publications == expected_result
+    assert list(map(lambda p: p.id, publications)) == list(
+        map(lambda r: UUID(int=r), expected_result)
+    )
 
 
 @pytest.mark.asyncio

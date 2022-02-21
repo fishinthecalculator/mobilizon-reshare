@@ -66,15 +66,22 @@ async def events_with_status(
 
 
 async def get_all_publications(
-    from_date: Optional[Arrow] = None, to_date: Optional[Arrow] = None,
+    from_date: Optional[Arrow] = None,
+    to_date: Optional[Arrow] = None,
 ) -> Iterable[EventPublication]:
-    return await prefetch_publication_relations(
-        _add_date_window(Publication.all(), "timestamp", from_date, to_date)
+    return list(
+        map(
+            publication_from_orm,
+            await prefetch_publication_relations(
+                _add_date_window(Publication.all(), "timestamp", from_date, to_date)
+            ),
+        )
     )
 
 
 async def get_all_events(
-    from_date: Optional[Arrow] = None, to_date: Optional[Arrow] = None,
+    from_date: Optional[Arrow] = None,
+    to_date: Optional[Arrow] = None,
 ) -> Iterable[MobilizonEvent]:
     return map(
         event_from_model,
@@ -95,11 +102,9 @@ async def prefetch_event_relations(queryset: QuerySet[Event]) -> list[Event]:
 async def prefetch_publication_relations(
     queryset: QuerySet[Publication],
 ) -> list[Publication]:
-    publication = (
-        await queryset.prefetch_related("publisher", "event")
-        .order_by("timestamp")
-        .distinct()
-    )
+    publication = await queryset.order_by("timestamp").distinct()
+    for p in publication:
+        await p.fetch_related()
     return publication
 
 
@@ -130,13 +135,19 @@ async def publications_with_status(
             event__mobilizon_id=event_mobilizon_id
         )
 
-    return await prefetch_publication_relations(
-        _add_date_window(query, "timestamp", from_date, to_date)
+    return list(
+        map(
+            lambda pub: publication_from_orm(pub, event_from_model(pub.event)),
+            await prefetch_publication_relations(
+                _add_date_window(query, "timestamp", from_date, to_date)
+            ),
+        )
     )
 
 
 async def events_without_publications(
-    from_date: Optional[Arrow] = None, to_date: Optional[Arrow] = None,
+    from_date: Optional[Arrow] = None,
+    to_date: Optional[Arrow] = None,
 ) -> list[MobilizonEvent]:
     query = Event.filter(publications__id=None)
     events = await prefetch_event_relations(
@@ -198,9 +209,11 @@ async def get_publication(publication_id):
     try:
         publication = await prefetch_publication_relations(
             Publication.get(id=publication_id).first()
-        )
+        )[0]
         # TODO: this is redundant but there's some prefetch problem otherwise
         publication.event = await get_event(publication.event.mobilizon_id)
-        return publication_from_orm(event=event_from_model(publication.event))
+        return publication_from_orm(
+            model=publication, event=event_from_model(publication.event)
+        )
     except DoesNotExist:
         return None
